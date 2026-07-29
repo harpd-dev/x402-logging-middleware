@@ -1,0 +1,27 @@
+{
+  "name": "@harpd/x402-logging-middleware",
+  "version": "0.1.0",
+  "description": "Drop-in x402 payment logging middleware for Node HTTP / Express. Structured, audit-friendly logs for every x402 interaction. Zero runtime deps.",
+  "type": "module",
+  "main": "src/index.js",
+  "module": "src/index.js",
+  "types": "src/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./src/index.d.ts",
+      "import": "./src/index.js",
+      "require": "./src/index.js"
+    }
+  },
+  "files": ["src"],
+  "keywords": ["x402", "agent-commerce", "payment-logging", "express-middleware", "agent-payments", "harpd"],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/harpd-dev/x402-logging-middleware.git"
+  },
+  "homepage": "https://harpd.com/docs/x402-logging",
+  "bugs": {
+    "url": "https://github.com/harpd-dev/x402-logging-middleware/issues"
+  }
+}
