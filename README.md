@@ -47,11 +47,80 @@ Every request through the middleware emits a JSON event:
   "path": "/paid-resource",
   "statusCode": 402,
   "asset": "eip155:8453/erc20:0xUSDC",
+  "network": "eip155:8453",
   "amountUsd": 0.01,
+  "amountAtomic": "10000",
   "txHash": null,
   "x402": { "requirement": { "accepts": [ ... ] }, "payment": null, "paymentResponse": null }
 }
 ```
+
+Prices in an x402 challenge are quoted in the asset's smallest unit, so the
+`price: '10000'` above is 10000 six-decimal USDC units, which is the `0.01`
+shown in the event. `amountAtomic` keeps the unscaled value exactly as it came
+off the wire. For an asset whose decimals are not known, `amountUsd` is the raw
+price unchanged, and you can declare the decimals yourself:
+
+```ts
+app.use(createX402LoggingMiddleware({
+  assetDecimals: { 'sui:mainnet': 6 },
+}))
+```
+
+## Logging Casper x402 payments
+
+Casper uses the CAIP-2 network ids `casper:casper` (mainnet) and
+`casper:casper-test` (testnet), and settles in wCSPR, a CEP-18 token. CSPR has 9
+decimals and its smallest unit is the mote (1 CSPR = 1,000,000,000 motes), so a
+Casper challenge quotes motes the same way an EVM challenge quotes six-decimal
+USDC units. Both are handled out of the box.
+
+```ts
+import express from 'express'
+import { createX402LoggingMiddleware } from '@harpd/x402-logging-middleware'
+
+const app = express()
+app.use(createX402LoggingMiddleware({ direction: 'inbound' }))
+
+app.get('/paid-resource', (req, res) => {
+  res.setHeader('www-authenticate', JSON.stringify({
+    accepts: [{
+      scheme: 'exact',
+      asset: 'casper:casper/cep18:0e5a5f4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2c',
+      price: '10000000',
+      payTo: '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef01',
+      maxTimeoutSeconds: 60,
+    }],
+  }))
+  res.status(402).end()
+})
+```
+
+That emits `"network": "casper:casper"`, `"amountAtomic": "10000000"` and
+`"amountUsd": 0.01`, ten million motes being one hundredth of a CSPR.
+
+Settled payments are logged the same way as any other chain. Casper deploy and
+transaction hashes are 64 hex characters with no `0x` prefix, and are passed
+through as they are:
+
+```ts
+import { logX402Payment } from '@harpd/x402-logging-middleware'
+
+logX402Payment({
+  direction: 'outbound',
+  resource: 'https://paid-api.example.com/v1/weather',
+  asset: 'casper:casper/cep18:0e5a5f4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2c',
+  payment: { scheme: 'exact', network: 'casper:casper', payload: { amount: '10000000' } },
+  txHash: 'a1b2c3d4e5f60718293a4b5c6d7e8f90a1b2c3d4e5f60718293a4b5c6d7e8f90',
+  status: 'settled',
+})
+```
+
+To verify and settle the payments you log here, Casper runs a hosted x402
+facilitator at <https://x402-facilitator.cspr.cloud> (docs:
+<https://docs.cspr.cloud>). Client and server SDKs live in
+[make-software/casper-x402](https://github.com/make-software/casper-x402)
+(npm `@make-software/casper-x402`).
 
 ## Custom sink (forward to Harpd / your own store)
 
@@ -82,6 +151,14 @@ logX402Payment({
   status: 'settled',
 })
 ```
+
+## Tests
+
+```bash
+npm test
+```
+
+Runs the `node:test` suite in `test/`. No dependencies to install.
 
 ## Why a middleware (not just console.log)
 

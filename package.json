@@ -14,7 +14,10 @@
     }
   },
   "files": ["src"],
-  "keywords": ["x402", "agent-commerce", "payment-logging", "express-middleware", "agent-payments", "harpd"],
+  "scripts": {
+    "test": "node --test"
+  },
+  "keywords": ["x402", "agent-commerce", "payment-logging", "express-middleware", "agent-payments", "harpd", "casper"],
   "license": "MIT",
   "repository": {
     "type": "git",
